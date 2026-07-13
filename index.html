@@ -1,0 +1,260 @@
+<!doctype html>
+<html xmlns:mso="urn:schemas-microsoft-com:office:office" xmlns:msdt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882">
+  <head>
+    <title>JQuery Assignment 1</title>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="data.js"></script>
+<style>
+      * {
+        box-sizing: border-box;
+      }
+ 
+      body {
+        margin: 0;
+        padding: 32px 16px;
+        font-family: Arial, Helvetica, sans-serif;
+        color: #172033;
+        background: #eef2f7;
+      }
+ 
+      main {
+        width: min(960px, 100%);
+        margin: 0 auto;
+        padding: 28px;
+        border-radius: 10px;
+        background: white;
+        box-shadow: 0 10px 30px rgba(23, 32, 51, 0.12);
+      }
+ 
+      h1 {
+        margin: 0 0 8px;
+        font-size: 2rem;
+      }
+ 
+      .instructions {
+        margin: 0 0 22px;
+        color: #536078;
+      }
+ 
+      .table-wrapper {
+        overflow-x: auto;
+      }
+ 
+      table {
+        width: 100%;
+        min-width: 660px;
+        border-collapse: collapse;
+      }
+ 
+      th,
+      td {
+        padding: 12px 14px;
+        border: 1px solid #b9c2d0;
+        text-align: left;
+      }
+ 
+      th {
+        background: #1f4f8c;
+        color: white;
+      }
+ 
+      tbody tr:nth-child(even) {
+        background: #f7f9fc;
+      }
+ 
+      tbody tr:hover {
+        background: #edf5ff;
+      }
+ 
+      .score-cell {
+        cursor: pointer;
+      }
+ 
+      .score-cell:hover {
+        color: #1456a0;
+        text-decoration: underline;
+      }
+ 
+      .score-input {
+        width: 100%;
+        min-width: 75px;
+        padding: 7px 8px;
+        border: 2px solid #2563eb;
+        border-radius: 4px;
+        font: inherit;
+      }
+ 
+      .score-input:focus {
+        outline: 2px solid rgba(37, 99, 235, 0.2);
+      }
+ 
+      .grade {
+        font-weight: bold;
+      }
+ 
+      .message {
+        min-height: 22px;
+        margin: 14px 0 0;
+        color: #b42318;
+        font-size: 0.9rem;
+      }
+ 
+      @media (max-width: 640px) {
+        body {
+          padding: 16px 8px;
+        }
+ 
+        main {
+          padding: 18px 12px;
+        }
+ 
+        h1 {
+          font-size: 1.5rem;
+        }
+      }
+    </style>
+</head>
+
+  <body>
+    <main>
+      <h1>Student Score Editor</h1>
+      <p class="instructions">
+        Click a Midterm or Final score to edit it. Press Enter to save or Esc to cancel.
+      </p>
+    
+    <div class="table-wrapper">
+      <table aria-describedby="edit-message">
+        <thead>
+          <tr>
+            <th style="width: 5%">ID</th>
+            <th style="width: 30%">Name</th>
+            <th>Midterm</th>
+            <th>Final</th>
+            <th>Total</th>
+            <th>Grade</th>
+          </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+    </div>
+
+    <p id="edit-message" class="message" aria-live="polite"></p>
+    </main>
+
+    <script>
+      $ (function (){
+        function calculateGrade(total){
+          if (total >=80)return "A";
+          if (total >=70)return "B";
+          if (total >=60)return "C";
+          if (total >=50)return "D";
+          return "F";
+        }
+        function calculateTotal(student){
+          return Number(student.midterm)+ Number(student.final);
+        }
+        function createStudentRow(student,index){
+          const total=calculateTotal(student);
+          const $row = $("<tr>").attr("data-index",index);
+          
+          $("<td>").text(student.id).appendTo($row);
+          $("<td>").text(student.name).appendTo($row);
+          $("<td>")
+            .addClass("score-cell")
+            .attr({ "data-field": "midterm", title: "Click to edit midterm score" })
+            .text(student.midterm)
+            .appendTo($row);
+          $("<td>")
+            .addClass("score-cell")
+            .attr({ "data-field": "final", title: "Click to edit final score" })
+            .text(student.final)
+            .appendTo($row);
+          $("<td>").addClass("total").text(total).appendTo($row);
+          $("<td>").addClass("grade").text(calculateGrade(total)).appendTo($row);
+
+          return $row;
+        }
+        function renderTable() {
+          const $tableBody = $("#table-body").empty();
+
+          $.each(students, function (index, student) {
+            $tableBody.append(createStudentRow(student, index));
+          });
+        }
+
+        function updateCalculatedCells($row, student) {
+          const total = calculateTotal(student);
+          $row.find(".total").text(total);
+          $row.find(".grade").text(calculateGrade(total));
+        }
+
+        function finishEditing($input, shouldSave) {
+          const $cell = $input.closest("td");
+          const $row = $cell.closest("tr");
+          const studentIndex = Number($row.attr("data-index"));
+          const field = $cell.attr("data-field");
+          const oldScore = Number($input.attr("data-old-score"));
+          const inputText = $input.val().trim();
+          const newScore = Number(inputText);
+
+          if (shouldSave) {
+            const isValid =
+              inputText !== "" &&
+              Number.isFinite(newScore) &&
+              newScore >= 0 &&
+              newScore <= 50;
+
+            if (!isValid) {
+              $("#edit-message").text("Score must be a number from 0 to 50. The score was not changed.");
+              $cell.text(oldScore);
+              return;
+            }
+
+            students[studentIndex][field] = newScore;
+            $cell.text(newScore);
+            updateCalculatedCells($row, students[studentIndex]);
+            $("#edit-message").text("");
+            return;
+          }
+
+          $cell.text(oldScore);
+          $("#edit-message").text("");
+        }
+        $("#table-body").on("click",".score-cell",function(){
+          if ($(this).find(".score-input").length>0)
+          return;
+          const $currentInput = $(".score-input");
+          if ($currentInput.length > 0) {
+            finishEditing($currentInput, false);
+        }
+        const $cell =$(this);
+        const currentScore= $cell.text().trim();
+        const $input=$("<input>",{
+          type:"number",
+          class: "score-input",
+          min : 0,
+          max: 50,
+          step: "any",
+          value: currentScore,
+          "data-old-score":currentScore,
+          "aria-label":"Edit score from 0 to 50",
+        });
+        $cell.empty().append($input);
+          $input.trigger("focus").select();
+        });
+
+        $("#table-body").on("keydown", ".score-input", function (event) {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            finishEditing($(this), true);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            finishEditing($(this), false);
+          }
+        });
+
+        renderTable();
+      });
+    </script>
+  </body>
+</html>
